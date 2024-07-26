@@ -62,24 +62,15 @@ contract ManagerItem is Ownable {
         string calldata reason
     ) external onlyOwner {
         bool itemFound = false;
+        uint256 index;
         for (uint256 i = 0; i < ownerItems[msg.sender].length; i++) {
             if (ownerItems[msg.sender][i].status == StatusItem.Review) {
                 revert("The item is already for sale");
             }
 
             if (ownerItems[msg.sender][i].itemId == _itemId) {
-                ownerItems[msg.sender][i] = ownerItems[msg.sender][
-                    ownerItems[msg.sender].length - 1
-                ];
-                ownerItems[msg.sender].pop();
+                index = i;
                 itemFound = true;
-                emit ItemDelete(
-                    owner(),
-                    block.timestamp,
-                    ownerItems[msg.sender][i].itemName,
-                    ownerItems[msg.sender][i].itemPriceWei,
-                    reason
-                );
                 break;
             }
         }
@@ -87,6 +78,19 @@ contract ManagerItem is Ownable {
         if (!itemFound) {
             revert("Item not found");
         }
+
+        emit ItemDelete(
+            owner(),
+            block.timestamp,
+            ownerItems[msg.sender][index].itemName,
+            ownerItems[msg.sender][index].itemPriceWei,
+            reason
+        );
+
+        ownerItems[msg.sender][index] = ownerItems[msg.sender][
+            ownerItems[msg.sender].length - 1
+        ];
+        ownerItems[msg.sender].pop();
     }
 
     function purchaseItem(uint256 _itemId) public payable {
@@ -94,7 +98,7 @@ contract ManagerItem is Ownable {
         address previousOwner = owner();
         uint256 itemFoundIndex;
         // found the item in owner array
-        for (uint256 i; i < ownerItems[previousOwner].length; i++) {
+        for (uint256 i = 0; i < ownerItems[previousOwner].length; i++) {
             if (ownerItems[previousOwner][i].itemId == _itemId) {
                 require(
                     ownerItems[previousOwner][i].itemPriceWei == msg.value,
@@ -106,7 +110,7 @@ contract ManagerItem is Ownable {
                 );
 
                 foundItem = true;
-                itemFoundIndex = 1;
+                itemFoundIndex = i;
                 break;
             }
         }
@@ -135,9 +139,12 @@ contract ManagerItem is Ownable {
         );
     }
 
-    function withdrawFunds() external payable onlyOwner {
-        payable(owner()).transfer(address(this).balance);
+    function lengthItems() external view onlyOwner returns (uint) {
+        return ownerItems[msg.sender].length;
     }
 
-
+    function withdrawFunds() external payable onlyOwner {
+        require(address(this).balance > 0, "without funds for withdraw");
+        payable(owner()).transfer(address(this).balance);
+    }
 }
